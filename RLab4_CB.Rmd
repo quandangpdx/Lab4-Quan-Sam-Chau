@@ -35,6 +35,55 @@ Unfortunately, our hypothetical data collectors for this dataset are simply terr
 1) Identify every genuine name and correct all the misspelled ones to the correct canonical spelling. Use all the data wrangling tools you'd like (e.g. `dplyr` functions), but make sure you're checking each reassignment to make sure the names get classified correctly. You'll fully automate this process later. It is probably reasonable to assume that rare spellings are typos, at least if they are also relatively similar to common spellings.  
 Hint: There are a number of ways to measure the similarity of strings and that provide a clue as to likely typos. One general class of approach is in terms of edit distance between strings, which describes how many edititing operations need to be done to tranform one string into another. The R package `stringdist` provides Damerau–Levenshtein, Hamming, Levenshtein, and optimal string alignment as measures of edit distance. Keep in mind that sometimes multiple legitimate names are actually close to each other in terms of similarity measures (Dan VS Don, Jacob VS Jakob, etc). If you want to use `stringdist` for this problem, start by looking at the functions `stringdist()` and `stringdistmatrix()`.
 
+```{r}
+#install.packages("stringdist")
+library(stringdist)
+library(readxl)
+library(dplyr)
+library(stringr)
+humans_names <- read.csv("humans-names.csv")
+humans_names[order(humans_names$Name),]
+
+humans_names$error <- str_detect(humans_names$Name,"^[[a-z]]")
+
+error1 <- humans_names[humans_names$error=="TRUE",]
+unique_names = humans_names %>% 
+  select(Name) %>% 
+  count(Name) %>% 
+  arrange(n) 
+
+# observe that names appearing n<=5 are likely to be errors
+
+unique_names$genuine[unique_names$n>5]<-1
+unique_names$genuine[unique_names$n<=5]<-0
+
+genuine <- unique_names[unique_names$genuine==1,]
+error <- unique_names[unique_names$genuine==0,]
+
+# in error list, calculate stringdist for each error by looping over the list of genuine name
+for (i in genuine$Name) {
+  error$stringdist_i <- stringdist(error$Name,i)
+}
+
+resultflmatrix <- stringdistmatrix(error$Name,genuine$Name,method="dl")
+resultdf <- data.frame(resultflmatrix)
+resultdf$error_name <- error$Name
+
+#resultdf[c("min", "min_index")] <- apply(resultdf[,c(1:18)],1 , function(x) c(min(x), names(x[which.min(x)]) ) ) # suppose to work for  2 col simultaneously but not
+
+resultdf[c("min")] <- apply(resultdf[,c(1:18)],1 , function(x) c(min(x)) )
+  
+#resultdf[c("min_index")] <- apply(resultdf[,c(1:18)],1 , function(x) c(names(x[which.min(x)]) ) ) # get the name of the variable
+
+resultdf[c("min_index")] <- apply(resultdf[,c(1:18)],1 , function(x) c(which.min(x)) )
+
+resultdf$corrected <- genuine$Name[resultdf$min_index]
+
+resultdf[c("error_name", "corrected")]
+
+```
+
+
 2) For each of the genuine names identified in (1), produce a histogram showing the distribution of Damerau–Levenshtein distances from the genuine name to the miscassified data. Make sure distances from genuine names to other genuine names are not included in these distributions.  
 Arrange all of the histograms into one figure write a short interpretation of it intended for a non-statistician client. 
 
