@@ -3,9 +3,7 @@ title: "R Coding Lab Part 4"
 output: rmdformats::downcute
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
+
 
 **Complete the following lab as a group. This document should exist in your GitHub repo while you're working on it. Your code should be heavily commented so someone reading your code can follow along easily. See the first code snippet below for an example of commented code.**
 
@@ -25,7 +23,8 @@ Apart from the physics questions, the dataset derived by the Michelson–Morley 
 
 1) Using R to identify the outliers first within each setup (defined by the `Expt` number) and then within the data collection as a whole. The hope in the original experiment was that each setup would show a significant difference in central tendency. We did not cover confidence levels and null hypotheses, so simply create visualization(s) that aids you in gaining insight into how much apparent difference exists between the several setups.
 
-```{r}
+
+```r
 library(dplyr)
 library(ggplot2)
 
@@ -49,7 +48,11 @@ ggplot(
     geom_histogram(bins = 10) +
     facet_wrap(vars(Expt)) +
     ggtitle("Speed measurements for each experiment")
+```
 
+![plot of chunk unnamed-chunk-1](figure/unnamed-chunk-1-1.png)
+
+```r
 ggplot(
     data = df,
     aes(
@@ -58,7 +61,11 @@ ggplot(
     xlab('Speed (km/s)') +
     geom_histogram(bins = 20) +
     ggtitle("Speed measurements for all experiments")
+```
 
+![plot of chunk unnamed-chunk-1](figure/unnamed-chunk-1-2.png)
+
+```r
 ggplot(data = df) +
     geom_point(
     aes(
@@ -68,12 +75,26 @@ ggplot(data = df) +
     ) ) +
     xlab('Speed (km/s)') +
     ylab('z-score (relative to experiment)')
+```
+
+![plot of chunk unnamed-chunk-1](figure/unnamed-chunk-1-3.png)
+
+```r
     ggtitle("Speed measurements for all experiments")
+```
+
+```
+## $title
+## [1] "Speed measurements for all experiments"
+## 
+## attr(,"class")
+## [1] "labels"
 ```
 
 2) If you discard the outliers within each setup, are the differences between setups increased or decreased? Answer with either a visualization or by looking at statistics on the reduced groups.
 
-```{r}
+
+```r
 cleaned <- df %>%
     filter( abs(zscore) <= 1 )
 
@@ -86,7 +107,11 @@ ggplot(
     geom_histogram(bins = 10) +
     facet_wrap(vars(Expt)) +
     ggtitle("Speed measurements for each experiment")
+```
 
+![plot of chunk unnamed-chunk-2](figure/unnamed-chunk-2-1.png)
+
+```r
 ggplot(
     data = cleaned,
     aes(
@@ -95,7 +120,11 @@ ggplot(
     xlab('Speed (km/s)') +
     geom_histogram(bins = 20) +
     ggtitle("Speed measurements for all experiments")
+```
 
+![plot of chunk unnamed-chunk-2](figure/unnamed-chunk-2-2.png)
+
+```r
 ggplot(data = cleaned) +
     geom_point(
     aes(
@@ -105,8 +134,23 @@ ggplot(data = cleaned) +
     ) ) +
     xlab('Speed (km/s)') +
     ylab('z-score (relative to experiment)')
-    ggtitle("Speed measurements for all experiments")
+```
 
+![plot of chunk unnamed-chunk-2](figure/unnamed-chunk-2-3.png)
+
+```r
+    ggtitle("Speed measurements for all experiments")
+```
+
+```
+## $title
+## [1] "Speed measurements for all experiments"
+## 
+## attr(,"class")
+## [1] "labels"
+```
+
+```r
 df <- df %>%
     select(
         -zscore,
@@ -122,7 +166,30 @@ cleaned <- cleaned %>%
         )
 
 summary(df)
+```
+
+```
+##       Expt        Run            Speed       
+##  Min.   :1   Min.   : 1.00   Min.   :299620  
+##  1st Qu.:2   1st Qu.: 5.75   1st Qu.:299808  
+##  Median :3   Median :10.50   Median :299850  
+##  Mean   :3   Mean   :10.50   Mean   :299852  
+##  3rd Qu.:4   3rd Qu.:15.25   3rd Qu.:299892  
+##  Max.   :5   Max.   :20.00   Max.   :300070
+```
+
+```r
 summary(cleaned)
+```
+
+```
+##       Expt            Run            Speed       
+##  Min.   :1.000   Min.   : 1.00   Min.   :299770  
+##  1st Qu.:2.000   1st Qu.: 6.00   1st Qu.:299810  
+##  Median :3.000   Median :11.00   Median :299850  
+##  Mean   :2.943   Mean   :11.13   Mean   :299861  
+##  3rd Qu.:4.000   3rd Qu.:16.00   3rd Qu.:299880  
+##  Max.   :5.000   Max.   :20.00   Max.   :300000
 ```
 
 # Mispelled Names
@@ -133,57 +200,7 @@ Unfortunately, our hypothetical data collectors for this dataset are simply terr
 1) Identify every genuine name and correct all the misspelled ones to the correct canonical spelling. Use all the data wrangling tools you'd like (e.g. `dplyr` functions), but make sure you're checking each reassignment to make sure the names get classified correctly. You'll fully automate this process later. It is probably reasonable to assume that rare spellings are typos, at least if they are also relatively similar to common spellings.
 Hint: There are a number of ways to measure the similarity of strings and that provide a clue as to likely typos. One general class of approach is in terms of edit distance between strings, which describes how many edititing operations need to be done to tranform one string into another. The R package `stringdist` provides Damerau–Levenshtein, Hamming, Levenshtein, and optimal string alignment as measures of edit distance. Keep in mind that sometimes multiple legitimate names are actually close to each other in terms of similarity measures (Dan VS Don, Jacob VS Jakob, etc). If you want to use `stringdist` for this problem, start by looking at the functions `stringdist()` and `stringdistmatrix()`.
 
-```{r}
-#install.packages("stringdist")
-library(stringdist)
-library(readxl)
-library(dplyr)
-library(stringr)
-humans_names <- read.csv("humans-names.csv")
-humans_names[order(humans_names$Name),]
-
-humans_names$error <- str_detect(humans_names$Name,"^[[a-z]]")
-
-error1 <- humans_names[humans_names$error=="TRUE",]
-unique_names = humans_names %>% 
-  select(Name) %>% 
-  count(Name) %>% 
-  arrange(n) 
-
-# observe that names appearing n<=5 are likely to be errors
-
-unique_names$genuine[unique_names$n>5]<-1
-unique_names$genuine[unique_names$n<=5]<-0
-
-genuine <- unique_names[unique_names$genuine==1,]
-error <- unique_names[unique_names$genuine==0,]
-
-# in error list, calculate stringdist for each error by looping over the list of genuine name
-for (i in genuine$Name) {
-  error$stringdist_i <- stringdist(error$Name,i)
-}
-
-resultflmatrix <- stringdistmatrix(error$Name,genuine$Name,method="dl")
-resultdf <- data.frame(resultflmatrix)
-resultdf$error_name <- error$Name
-
-#resultdf[c("min", "min_index")] <- apply(resultdf[,c(1:18)],1 , function(x) c(min(x), names(x[which.min(x)]) ) ) # suppose to work for  2 col simultaneously but not
-
-resultdf[c("min")] <- apply(resultdf[,c(1:18)],1 , function(x) c(min(x)) )
-  
-#resultdf[c("min_index")] <- apply(resultdf[,c(1:18)],1 , function(x) c(names(x[which.min(x)]) ) ) # get the name of the variable
-
-resultdf[c("min_index")] <- apply(resultdf[,c(1:18)],1 , function(x) c(which.min(x)) )
-
-resultdf$corrected <- genuine$Name[resultdf$min_index]
-
-resultdf[c("error_name", "corrected")]
-
-```
-
-
 2) For each of the genuine names identified in (1), produce a histogram showing the distribution of Damerau–Levenshtein distances from the genuine name to the miscassified data. Make sure distances from genuine names to other genuine names are not included in these distributions.
 Arrange all of the histograms into one figure write a short interpretation of it intended for a non-statistician client.
-
 
 3) Write code that reclassifies names similar to problem (1), but fully automated. You should end up with a function that takes the original data set and returns a cleaned version. Compare this cleaned data frame to the one from problem (1) and quantify the accuracy (i.e. what proportion of rows match?). Make sure your automated process achieves 90%, but shoot for higher if possible!
