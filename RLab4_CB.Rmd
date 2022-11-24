@@ -29,36 +29,44 @@ Apart from the physics questions, the dataset derived by the Michelson–Morley 
 library(dplyr)
 library(ggplot2)
 
+# Load data
 df <- read.csv("morley.dat", sep="")
 
+# Uncentering speed data
 df <- df %>%
     mutate(Speed = Speed + 299000)
 
+# Calculate the Zscore of speed by experiment
 df <- df %>%
     group_by(Expt) %>%
     mutate(expt_mean = mean(Speed)) %>%
     mutate(expt_sd = sd(Speed)) %>%
     mutate(zscore = ( Speed - expt_mean) / expt_sd )
 
+# Plot histogram of recorded speed (in thousands km/s) for each experiment
 ggplot(
     data = df,
     aes(
         x = Speed/1000
     ) ) +
-    xlab('Speed (km/s)') +
+    xlab('Speed (1000 km/s)') +
+    ylab('Frequency') +
     geom_histogram(bins = 10) +
     facet_wrap(vars(Expt)) +
-    ggtitle("Speed measurements for each experiment")
+    ggtitle("Histogram of Speed measurements for each experiment")
 
+# Plot histogram of recorded speed for all experiments
 ggplot(
     data = df,
     aes(
         x = Speed/1000
     ) ) +
-    xlab('Speed (km/s)') +
+    xlab('Speed (1000 km/s)') +
+    ylab('Frequency') +
     geom_histogram(bins = 20) +
-    ggtitle("Speed measurements for all experiments")
+    ggtitle("Histogram of Speed measurements in total")
 
+# See the spread of data experiment
 ggplot(data = df) +
     geom_point(
     aes(
@@ -66,7 +74,7 @@ ggplot(data = df) +
         y = zscore,
         color = factor(Expt)
     ) ) +
-    xlab('Speed (km/s)') +
+    xlab('Speed (1000 km/s)') +
     ylab('z-score (relative to experiment)')
     ggtitle("Speed measurements for all experiments")
 ```
@@ -74,25 +82,35 @@ ggplot(data = df) +
 2) If you discard the outliers within each setup, are the differences between setups increased or decreased? Answer with either a visualization or by looking at statistics on the reduced groups.
 
 ```{r}
-cleaned <- df %>%
-    filter( abs(zscore) <= 1 )
+# Detect outliers using IQR method
+for (i in 1:5) {
+  df$Q1[df$Expt==i] <- quantile(df$Speed[df$Expt==i], .25)
+  df$Q3[df$Expt==i] <- quantile(df$Speed[df$Expt==i], .75)
+  df$IQR[df$Expt==i] <- IQR(df$Speed[df$Expt==i])
+}
 
+
+# Only keep rows in dataframe that have values within 1.5*IQR of Q1 and Q3
+cleaned <- subset(df, Speed> (Q1 - 1.5*IQR) & Speed< (Q3 + 1.5*IQR))
+
+# Histogram of speed measurement after dropping outliers, by experiment
 ggplot(
     data = cleaned,
     aes(
         x = Speed/1000
     ) ) +
-    xlab('Speed (km/s)') +
+    xlab('Speed (1000 km/s)') +
     geom_histogram(bins = 10) +
     facet_wrap(vars(Expt)) +
-    ggtitle("Speed measurements for each experiment")
+    ggtitle("Speed measurements for each experiment (outliers dropped)")
 
+# Histogram of speed measurement after dropping outliers
 ggplot(
     data = cleaned,
     aes(
         x = Speed/1000
     ) ) +
-    xlab('Speed (km/s)') +
+    xlab('Speed (1000 km/s)') +
     geom_histogram(bins = 20) +
     ggtitle("Speed measurements for all experiments")
 
@@ -103,7 +121,7 @@ ggplot(data = cleaned) +
         y = zscore,
         color = factor(Expt)
     ) ) +
-    xlab('Speed (km/s)') +
+    xlab('Speed (1000 km/s)') +
     ylab('z-score (relative to experiment)')
     ggtitle("Speed measurements for all experiments")
 
@@ -123,6 +141,25 @@ cleaned <- cleaned %>%
 
 summary(df)
 summary(cleaned)
+
+df %>% 
+  group_by(Expt) %>% 
+  summarise(
+    n = n(),
+    min = min(Speed),
+    max = max(Speed),
+    mean = mean(Speed),
+    sd = sd(Speed)
+  )
+cleaned %>% 
+  group_by(Expt) %>% 
+  summarise(
+    n = n(),
+    min = min(Speed),
+    max = max(Speed),
+    mean = mean(Speed),
+    sd = sd(Speed)
+  )
 ```
 
 # Mispelled Names
