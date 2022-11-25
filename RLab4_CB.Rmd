@@ -7,30 +7,58 @@ output: rmdformats::downcute
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-**Complete the following lab as a group. This document should exist in your GitHub repo while you're working on it. Your code should be heavily commented so someone reading your code can follow along easily. See the first code snippet below for an example of commented code.**
+**Complete the following lab as a group.
+This document should exist in your GitHub repo while you"re working on it. Your
+code should be heavily commented so someone reading your code can follow along
+easily. See the first code snippet below for an example of commented code.**
 
-**Here's the catch: For any given problem, the person writing the code should not be the person commenting that code, and every person must both code AND comment at least one problem in this lab (you decide how to split the work). This will involve lots of pushing and pulling through Git, and you may have to resolve conflicts if you're not careful! Refer to last Thursday's class notes for details on conflict resolution.**
+**Here"s the catch: For any given problem, the person writing the code should
+not be the person commenting that code, and every person must both code AND
+comment at least one problem in this lab (you decide how to split the work).
+This will involve lots of pushing and pulling through Git, and you may have to
+resolve conflicts if you"re not careful! Refer to last Thursday"s class notes
+for details on conflict resolution.**
 
-**ALSO, all plots generated should have labeled axes, titles, and legends when appropriate. Don't forget units of measurement! Make sure these plots could be interpreted by your client.**
+**ALSO, all plots generated should have labeled axes, titles, and legends when
+appropriate. Don"t forget units of measurement! Make sure these plots could be
+interpreted by your client.**
 
-These problems were adapted from **Cleaning Data for Effective Data Science** by David Mertz
+These problems were adapted from **Cleaning Data for Effective Data Science**
+by David Mertz
 
 # Dealing With Outliers
 
-The Michelson–Morley experiment was an attempt in the late 19th century to detect the existence of the luminiferous aether, a widely assumed medium that would carry light waves. This was the most famous “failed experiment” in the history of physics in that it did not detect what it was looking for—something we now know not to exist at all.
+The Michelson–Morley experiment was an attempt in the late 19th century to
+detect the existence of the luminiferous aether, a widely assumed medium that
+would carry light waves. This was the most famous “failed experiment” in the
+history of physics in that it did not detect what it was looking for—something
+we now know not to exist at all.
 
-The general idea was to measure the speed of light under different orientations of the equipment relative to the direction of movement of the Earth, since relative movement of the ether medium would add or subtract from the speed of the wave. Yes, it does not work that way under the theory of relativity, but it was a reasonable guess 150 years ago.
+The general idea was to measure the speed of light under different orientations
+of the equipment relative to the direction of movement of the Earth, since
+relative movement of the ether medium would add or subtract from the speed of
+the wave. Yes, it does not work that way under the theory of relativity, but it
+was a reasonable guess 150 years ago.
 
-Apart from the physics questions, the dataset derived by the Michelson–Morley experiment is widely available, including the sample given in `morley.dat`. The specific numbers in this data are measurements of the speed of light in km/s with a zero point of 299,000. So, for example, the mean measurement in experiment 1 was 299,909 km/s (you can check this when you load the data).
+Apart from the physics questions, the dataset derived by the Michelson–Morley
+experiment is widely available, including the sample given in `morley.dat`. The
+specific numbers in this data are measurements of the speed of light in km/s
+with a zero point of 299,000. So, for example, the mean measurement in
+experiment 1 was 299,909 km/s (you can check this when you load the data).
 
-1) Using R to identify the outliers first within each setup (defined by the `Expt` number) and then within the data collection as a whole. The hope in the original experiment was that each setup would show a significant difference in central tendency. We did not cover confidence levels and null hypotheses, so simply create visualization(s) that aids you in gaining insight into how much apparent difference exists between the several setups.
+1) Using R to identify the outliers first within each setup (defined by the
+`Expt` number) and then within the data collection as a whole. The hope in
+the original experiment was that each setup would show a significant
+difference in central tendency. We did not cover confidence levels and null
+hypotheses, so simply create visualization(s) that aids you in gaining
+insight into how much apparent difference exists between the several setups.
 
 ```{r}
 library(dplyr)
 library(ggplot2)
 
 # Load data
-df <- read.csv("morley.dat", sep="")
+df <- read.csv("morley.dat", sep = "")
 
 # Uncentering speed data
 df <- df %>%
@@ -47,10 +75,11 @@ df <- df %>%
 ggplot(
     data = df,
     aes(
-        x = Speed/1000
-    ) ) +
-    xlab('Speed (1000 km/s)') +
-    ylab('Frequency') +
+        x = Speed / 1000
+        )
+    ) +
+    xlab("Speed (1000 km/s)") +
+    ylab("Frequency") +
     geom_histogram(bins = 10) +
     facet_wrap(vars(Expt)) +
     ggtitle("Histogram of Speed measurements for each experiment")
@@ -59,10 +88,11 @@ ggplot(
 ggplot(
     data = df,
     aes(
-        x = Speed/1000
-    ) ) +
-    xlab('Speed (1000 km/s)') +
-    ylab('Frequency') +
+        x = Speed / 1000
+        )
+    ) +
+    xlab("Speed (1000 km/s)") +
+    ylab("Frequency") +
     geom_histogram(bins = 20) +
     ggtitle("Histogram of Speed measurements in total")
 
@@ -70,25 +100,33 @@ ggplot(
 ggplot(data = df) +
     geom_point(
     aes(
-        x = Speed/1000,
+        x = Speed / 1000,
         y = zscore,
         color = factor(Expt)
-    ) ) +
-    xlab('Speed (1000 km/s)') +
-    ylab('z-score (relative to experiment)')
+        )
+    ) +
+    xlab("Speed (1000 km/s)") +
+    ylab("z-score (relative to experiment)") +
     ggtitle("Speed measurements for all experiments")
 ```
 
-2) If you discard the outliers within each setup, are the differences between setups increased or decreased? Answer with either a visualization or by looking at statistics on the reduced groups.
+2) If you discard the outliers within each setup, are the differences between
+setups increased or decreased? Answer with either a visualization or by looking
+at statistics on the reduced groups.
 
 ```{r}
+# initialize variables for IQR method
+df <- df %>%
+    mutate(Q1 = 0) %>%
+    mutate(Q3 = 0) %>%
+    mutate(IQR = 0)
+
 # Detect outliers using IQR method
 for (i in 1:5) {
-  df$Q1[df$Expt==i] <- quantile(df$Speed[df$Expt==i], .25)
-  df$Q3[df$Expt==i] <- quantile(df$Speed[df$Expt==i], .75)
-  df$IQR[df$Expt==i] <- IQR(df$Speed[df$Expt==i])
+  df$Q1[df$Expt == i] <- quantile(df$Speed[df$Expt == i], .25)
+  df$Q3[df$Expt == i] <- quantile(df$Speed[df$Expt == i], .75)
+  df$IQR[df$Expt == i] <- IQR(df$Speed[df$Expt == i])
 }
-
 
 # Only keep rows in dataframe that have values within 1.5*IQR of Q1 and Q3
 cleaned <- subset(df, Speed> (Q1 - 1.5*IQR) & Speed< (Q3 + 1.5*IQR))
@@ -97,9 +135,10 @@ cleaned <- subset(df, Speed> (Q1 - 1.5*IQR) & Speed< (Q3 + 1.5*IQR))
 ggplot(
     data = cleaned,
     aes(
-        x = Speed/1000
-    ) ) +
-    xlab('Speed (1000 km/s)') +
+        x = Speed / 1000
+        )
+    ) +
+    xlab("Speed (1000 km/s)") +
     geom_histogram(bins = 10) +
     facet_wrap(vars(Expt)) +
     ggtitle("Speed measurements for each experiment (outliers dropped)")
@@ -108,23 +147,27 @@ ggplot(
 ggplot(
     data = cleaned,
     aes(
-        x = Speed/1000
-    ) ) +
-    xlab('Speed (1000 km/s)') +
+        x = Speed / 1000
+        )
+    ) +
+    xlab("Speed (1000 km/s)") +
     geom_histogram(bins = 20) +
     ggtitle("Speed measurements for all experiments")
 
+# scatter plot of measurements vs the z-score relative to the experiment
 ggplot(data = cleaned) +
     geom_point(
     aes(
-        x = Speed/1000,
+        x = Speed / 1000,
         y = zscore,
         color = factor(Expt)
-    ) ) +
-    xlab('Speed (1000 km/s)') +
-    ylab('z-score (relative to experiment)')
+        )
+    ) +
+    xlab("Speed (1000 km/s)") +
+    ylab("z-score (relative to experiment)") +
     ggtitle("Speed measurements for all experiments")
 
+# display statistics of raw and cleaned data (remove redundant info)
 df <- df %>%
     select(
         -zscore,
@@ -142,8 +185,9 @@ cleaned <- cleaned %>%
 summary(df)
 summary(cleaned)
 
-df %>% 
-  group_by(Expt) %>% 
+# display some more statistics
+df %>%
+  group_by(Expt) %>%
   summarise(
     n = n(),
     min = min(Speed),
@@ -151,8 +195,8 @@ df %>%
     mean = mean(Speed),
     sd = sd(Speed)
   )
-cleaned %>% 
-  group_by(Expt) %>% 
+cleaned %>%
+  group_by(Expt) %>%
   summarise(
     n = n(),
     min = min(Speed),
@@ -163,64 +207,99 @@ cleaned %>%
 ```
 
 # Mispelled Names
-Our data set `humans-names.csv` contains 25,000 height and weight measurements. Each row has a person’s first name pulled from the US Social Security Agency list of common first names over the last century.
+Our data set `humans-names.csv` contains 25,000 height and weight measurements.
+Each row has a person’s first name pulled from the US Social Security Agency
+list of common first names over the last century.
 
-Unfortunately, our hypothetical data collectors for this dataset are simply terrible typists, and they make typos when entering names with alarming frequency. There are some number of intended names in this dataset, but quite a few simple miscodings of those names as well. Your goal is to clean up these mispelled names.
+Unfortunately, our hypothetical data collectors for this dataset are simply
+terrible typists, and they make typos when entering names with alarming
+frequency. There are some number of intended names in this dataset, but quite
+a few simple miscodings of those names as well. Your goal is to clean up these
+mispelled names.
 
-1) Identify every genuine name and correct all the misspelled ones to the correct canonical spelling. Use all the data wrangling tools you'd like (e.g. `dplyr` functions), but make sure you're checking each reassignment to make sure the names get classified correctly. You'll fully automate this process later. It is probably reasonable to assume that rare spellings are typos, at least if they are also relatively similar to common spellings.
-Hint: There are a number of ways to measure the similarity of strings and that provide a clue as to likely typos. One general class of approach is in terms of edit distance between strings, which describes how many edititing operations need to be done to tranform one string into another. The R package `stringdist` provides Damerau–Levenshtein, Hamming, Levenshtein, and optimal string alignment as measures of edit distance. Keep in mind that sometimes multiple legitimate names are actually close to each other in terms of similarity measures (Dan VS Don, Jacob VS Jakob, etc). If you want to use `stringdist` for this problem, start by looking at the functions `stringdist()` and `stringdistmatrix()`.
+1) Identify every genuine name and correct all the misspelled ones to the
+correct canonical spelling. Use all the data wrangling tools you"d like
+(e.g. `dplyr` functions), but make sure you"re checking each reassignment to
+make sure the names get classified correctly. You"ll fully automate this
+process later. It is probably reasonable to assume that rare spellings are
+typos, at least if they are also relatively similar to common spellings.
+Hint: There are a number of ways to measure the similarity of strings and that
+provide a clue as to likely typos. One general class of approach is in terms of
+edit distance between strings, which describes how many edititing operations
+need to be done to tranform one string into another. The R package `stringdist`
+provides Damerau–Levenshtein, Hamming, Levenshtein, and optimal string alignment
+as measures of edit distance. Keep in mind that sometimes multiple legitimate
+names are actually close to each other in terms of similarity measures (Dan VS
+Don, Jacob VS Jakob, etc). If you want to use `stringdist` for this problem,
+start by looking at the functions `stringdist()` and `stringdistmatrix()`.
 
 ```{r}
-#install.packages("stringdist")
 library(stringdist)
 library(readxl)
 library(dplyr)
 library(stringr)
+
+# load data set
 humans_names <- read.csv("humans-names.csv")
-humans_names[order(humans_names$Name),]
 
-humans_names$error <- str_detect(humans_names$Name,"^[[a-z]]")
+# names containing non-alphabetic characters are assumed to be an error
+humans_names$error <- str_detect(humans_names$Name, "^[[a-z]]")
+error1 <- humans_names[humans_names$error == "TRUE", ]
 
-error1 <- humans_names[humans_names$error=="TRUE",]
-unique_names = humans_names %>% 
-  select(Name) %>% 
-  count(Name) %>% 
-  arrange(n) 
+# tally the unique names and create a new data set ordered by frequency
+unique_names = humans_names %>%
+  select(Name) %>%
+  count(Name) %>%
+  arrange(n)
 
 # observe that names appearing n<=5 are likely to be errors
+unique_names$genuine[unique_names$n > 5] <- 1
+unique_names$genuine[unique_names$n <= 5] <- 0
 
-unique_names$genuine[unique_names$n>5]<-1
-unique_names$genuine[unique_names$n<=5]<-0
+# partition the data set into (likely) genuine and error names
+genuine <- unique_names[unique_names$genuine == 1, ]
+error <- unique_names[unique_names$genuine == 0, ]
 
-genuine <- unique_names[unique_names$genuine==1,]
-error <- unique_names[unique_names$genuine==0,]
-
-# in error list, calculate stringdist for each error by looping over the list of genuine name
+# in error list, calculate stringdist for each error by looping over the list
+# of genuine name
 for (i in genuine$Name) {
-  error$stringdist_i <- stringdist(error$Name,i)
+  error$stringdist_i <- stringdist(error$Name, i)
 }
 
-resultflmatrix <- stringdistmatrix(error$Name,genuine$Name,method="dl")
+# compute the distance matrix between each distinct pair of names in the
+# stringdist metric
+resultflmatrix <- stringdistmatrix(error$Name, genuine$Name, method = "dl")
 resultdf <- data.frame(resultflmatrix)
 resultdf$error_name <- error$Name
 
-#resultdf[c("min", "min_index")] <- apply(resultdf[,c(1:18)],1 , function(x) c(min(x), names(x[which.min(x)]) ) ) # suppose to work for  2 col simultaneously but not
+# search for a closest neighbor in this metric for each name
+resultdf[c("min")] <- apply(
+    resultdf[c(1:18)], 1, function(x) c(min(x))
+    )
+resultdf[c("min_index")] <- apply(
+    resultdf[c(1:18)], 1, function(x) c(which.min(x))
+    )
 
-resultdf[c("min")] <- apply(resultdf[,c(1:18)],1 , function(x) c(min(x)) )
-  
-#resultdf[c("min_index")] <- apply(resultdf[,c(1:18)],1 , function(x) c(names(x[which.min(x)]) ) ) # get the name of the variable
-
-resultdf[c("min_index")] <- apply(resultdf[,c(1:18)],1 , function(x) c(which.min(x)) )
-
+# overwrite likely error names with their closest neighbor
 resultdf$corrected <- genuine$Name[resultdf$min_index]
 
+# the list of corrected names is relatively short; manually check that the
+# corrected names are reasonable
 resultdf[c("error_name", "corrected")]
-
 ```
 
 
-2) For each of the genuine names identified in (1), produce a histogram showing the distribution of Damerau–Levenshtein distances from the genuine name to the miscassified data. Make sure distances from genuine names to other genuine names are not included in these distributions.
-Arrange all of the histograms into one figure write a short interpretation of it intended for a non-statistician client.
+2) For each of the genuine names identified in (1), produce a histogram showing
+the distribution of Damerau–Levenshtein distances from the genuine name to the
+miscassified data. Make sure distances from genuine names to other genuine names
+are not included in these distributions.
+Arrange all of the histograms into one figure write a short interpretation of it
+intended for a non-statistician client.
 
 
-3) Write code that reclassifies names similar to problem (1), but fully automated. You should end up with a function that takes the original data set and returns a cleaned version. Compare this cleaned data frame to the one from problem (1) and quantify the accuracy (i.e. what proportion of rows match?). Make sure your automated process achieves 90%, but shoot for higher if possible!
+3) Write code that reclassifies names similar to problem (1), but fully
+automated. You should end up with a function that takes the original data set
+and returns a cleaned version. Compare this cleaned data frame to the one
+from problem (1) and quantify the accuracy (i.e. what proportion of rows
+match?). Make sure your automated process achieves 90%, but shoot for higher
+if possible!
