@@ -114,6 +114,10 @@ ggplot(data = df) +
 setups increased or decreased? Answer with either a visualization or by looking
 at statistics on the reduced groups.
 
+```
+The differences between setups become smaller when the outliers are removed.
+```
+
 ```{r}
 # initialize variables for IQR method
 df <- df %>%
@@ -285,7 +289,7 @@ resultdf <- resultdf %>% mutate(corrected = case_when(
 ))
 
 # check if any mispelled names left uncorrected
-resultdf %>% 
+resultdf %>%
   summarise_all(~sum(is.na(.)))
 
 ```
@@ -293,12 +297,35 @@ resultdf %>%
 
 2) For each of the genuine names identified in (1), produce a histogram showing
 the distribution of Damerau–Levenshtein distances from the genuine name to the
-miscassified data. Make sure distances from genuine names to other genuine names
-are not included in these distributions.
+misclassified data. Make sure distances from genuine names to other genuine
+names are not included in these distributions.
 Arrange all of the histograms into one figure write a short interpretation of it
 intended for a non-statistician client.
 
+```
+Below we see plots of the names that were corrected. For each incorrect name, we
+can measure the "distance" to the correct name by counting the number of
+incorrect letters. We found that this distance was at most two incorrect letters
+in this data set. For each genuine name, we count the number of incorrect names
+that were distance either one or two correct letters.
+```
+
 ```{r}
+resultdf <- resultdf %>%
+    mutate(distance_to_correct = stringdist(error_name, corrected))
+
+ggplot(
+    data = resultdf,
+    aes(
+        x = distance_to_correct,
+        group = corrected
+        )
+    ) +
+    xlab("Distance") +
+    ylab("Count") +
+    geom_histogram(bins = 2) +
+    ggtitle("Distance from incorrect name to correct name") +
+    facet_wrap(~corrected)
 ```
 
 

@@ -184,6 +184,8 @@ ggplot(data = df) +
 setups increased or decreased? Answer with either a visualization or by looking
 at statistics on the reduced groups.</li>
 </ol>
+<pre><code>The differences between setups become smaller when the outliers are removed.
+</code></pre>
 <pre><code class="language-r"># initialize variables for IQR method
 df &lt;- df %&gt;%
     mutate(Q1 = 0) %&gt;%
@@ -361,10 +363,6 @@ library(stringr)
 # load data set
 humans_names &lt;- read.csv(&quot;humans-names.csv&quot;)
 
-# names containing non-alphabetic characters are assumed to be an error
-humans_names$error &lt;- str_detect(humans_names$Name, &quot;^[[a-z]]&quot;)
-error1 &lt;- humans_names[humans_names$error == &quot;TRUE&quot;, ]
-
 # tally the unique names and create a new data set ordered by frequency
 unique_names = humans_names %&gt;%
   select(Name) %&gt;%
@@ -379,19 +377,83 @@ unique_names$genuine[unique_names$n &lt;= 5] &lt;- 0
 genuine &lt;- unique_names[unique_names$genuine == 1, ]
 error &lt;- unique_names[unique_names$genuine == 0, ]
 
-# in error list, calculate stringdist for each error by looping over the list
-# of genuine name
-for (i in genuine$Name) {
-  error$stringdist_i &lt;- stringdist(error$Name, i)
-}
-
 # compute the distance matrix between each distinct pair of names in the
 # stringdist metric
-resultflmatrix &lt;- stringdistmatrix(error$Name, genuine$Name, method = &quot;dl&quot;)
+resultflmatrix &lt;- stringdistmatrix(error$Name, genuine$Name, method = 'dl')
 resultdf &lt;- data.frame(resultflmatrix)
 resultdf$error_name &lt;- error$Name
 
-# search for a closest neighbor in this metric for each name
+# It's likely that mispelled names have distant ={1,2} to correct ones
+resultdf &lt;- resultdf %&gt;% mutate(corrected = case_when(
+  stringdist(&quot;Barbara&quot;, error_name, method='dl')&lt;3 ~ &quot;Barbara&quot;,
+  stringdist(&quot;David&quot;, error_name, method='dl')&lt;3 ~ &quot;David&quot;,
+  stringdist(&quot;Elizabeth&quot;, error_name, method='dl')&lt;3 ~ &quot;Elizabeth&quot;,
+  stringdist(&quot;James&quot;, error_name, method='dl')&lt;3 ~ &quot;James&quot;,
+  stringdist(&quot;Jennifer&quot;, error_name, method='dl')&lt;3 ~ &quot;Jennifer&quot;,
+  stringdist(&quot;Jessica&quot;, error_name, method='dl')&lt;3 ~ &quot;Jessica&quot;,
+  stringdist(&quot;John&quot;, error_name, method='dl')&lt;3 &amp; str_detect(error_name,&quot;h&quot;) ~ &quot;John&quot;,
+  stringdist(&quot;Jon&quot;, error_name, method='dl') &lt;3 ~ &quot;Jon&quot;,
+  stringdist(&quot;Joseph&quot;, error_name, method='dl')&lt;3 ~ &quot;Joseph&quot;,
+  stringdist(&quot;Linda&quot;, error_name, method='dl')&lt;3 ~ &quot;Linda&quot;,
+  stringdist(&quot;Marie&quot;, error_name, method='dl')&lt;3 ~ &quot;Marie&quot;,
+  stringdist(&quot;Mary&quot;, error_name, method='dl')&lt;3 ~ &quot;Mary&quot;,
+  stringdist(&quot;Michael&quot;, error_name, method='dl')&lt;3 ~ &quot;Michael&quot;,
+  stringdist(&quot;Patricia&quot;, error_name, method='dl')&lt;3 ~ &quot;Patricia&quot;,
+  stringdist(&quot;Richard&quot;, error_name, method='dl')&lt;3 ~ &quot;Richard&quot;,
+  stringdist(&quot;Robert&quot;, error_name, method='dl')&lt;3 ~ &quot;Robert&quot;,
+  stringdist(&quot;Susan&quot;, error_name, method='dl')&lt;3 ~ &quot;Susan&quot;,
+  stringdist(&quot;William&quot;, error_name, method='dl')&lt;3 ~ &quot;William&quot;,
+))
+
+# check if any mispelled names left uncorrected
+resultdf %&gt;%
+  summarise_all(~sum(is.na(.)))
+</code></pre>
+<pre><code>##   X1 X2 X3 X4 X5 X6 X7 X8 X9 X10 X11 X12 X13 X14 X15 X16 X17 X18 error_name
+## 1  0  0  0  0  0  0  0  0  0   0   0   0   0   0   0   0   0   0          0
+##   corrected
+## 1         0
+</code></pre>
+<ol start="2">
+<li>For each of the genuine names identified in (1), produce a histogram showing
+the distribution of Damerau–Levenshtein distances from the genuine name to the
+misclassified data. Make sure distances from genuine names to other genuine
+names are not included in these distributions.
+Arrange all of the histograms into one figure write a short interpretation of it
+intended for a non-statistician client.</li>
+</ol>
+<pre><code>Below we see plots of the names that were corrected. For each incorrect name, we
+can measure the &quot;distance&quot; to the correct name by counting the number of
+incorrect letters. We found that this distance was at most two incorrect letters
+in this data set. For each genuine name, we count the number of incorrect names
+that were distance either one or two correct letters.
+</code></pre>
+<pre><code class="language-r">resultdf &lt;- resultdf %&gt;%
+    mutate(distance_to_correct = stringdist(error_name, corrected))
+
+ggplot(
+    data = resultdf,
+    aes(
+        x = distance_to_correct,
+        group = corrected
+        )
+    ) +
+    xlab(&quot;Distance&quot;) +
+    ylab(&quot;Count&quot;) +
+    geom_histogram(bins = 2) +
+    ggtitle(&quot;Distance from incorrect name to correct name&quot;) +
+    facet_wrap(~corrected)
+</code></pre>
+<p><img src="data:image/png;base64,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" alt="plot of chunk unnamed-chunk-4" /></p>
+<ol start="3">
+<li>Write code that reclassifies names similar to problem (1), but fully
+automated. You should end up with a function that takes the original data set
+and returns a cleaned version. Compare this cleaned data frame to the one
+from problem (1) and quantify the accuracy (i.e. what proportion of rows
+match?). Make sure your automated process achieves 90%, but shoot for higher
+if possible!</li>
+</ol>
+<pre><code class="language-r"># search for a closest neighbor in this metric for each name
 resultdf[c(&quot;min&quot;)] &lt;- apply(
     resultdf[c(1:18)], 1, function(x) c(min(x))
     )
@@ -639,24 +701,6 @@ resultdf[c(&quot;error_name&quot;, &quot;corrected&quot;)]
 ## 230  Jennifeer  Jennifer
 ## 231        ohn      John
 </code></pre>
-<ol start="2">
-<li>
-<p>For each of the genuine names identified in (1), produce a histogram showing
-the distribution of Damerau–Levenshtein distances from the genuine name to the
-miscassified data. Make sure distances from genuine names to other genuine names
-are not included in these distributions.
-Arrange all of the histograms into one figure write a short interpretation of it
-intended for a non-statistician client.</p>
-</li>
-<li>
-<p>Write code that reclassifies names similar to problem (1), but fully
-automated. You should end up with a function that takes the original data set
-and returns a cleaned version. Compare this cleaned data frame to the one
-from problem (1) and quantify the accuracy (i.e. what proportion of rows
-match?). Make sure your automated process achieves 90%, but shoot for higher
-if possible!</p>
-</li>
-</ol>
 
 
 <script src="https://cdn.jsdelivr.net/combine/npm/@xiee/utils/js/center-img.min.js" async></script>
