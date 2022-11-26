@@ -123,6 +123,10 @@ ggplot(data = df) +
 setups increased or decreased? Answer with either a visualization or by looking
 at statistics on the reduced groups.
 
+```
+The differences between setups become smaller when the outliers are removed.
+```
+
 
 ```r
 # initialize variables for IQR method
@@ -329,10 +333,6 @@ library(stringr)
 # load data set
 humans_names <- read.csv("humans-names.csv")
 
-# names containing non-alphabetic characters are assumed to be an error
-humans_names$error <- str_detect(humans_names$Name, "^[[a-z]]")
-error1 <- humans_names[humans_names$error == "TRUE", ]
-
 # tally the unique names and create a new data set ordered by frequency
 unique_names = humans_names %>%
   select(Name) %>%
@@ -347,18 +347,93 @@ unique_names$genuine[unique_names$n <= 5] <- 0
 genuine <- unique_names[unique_names$genuine == 1, ]
 error <- unique_names[unique_names$genuine == 0, ]
 
-# in error list, calculate stringdist for each error by looping over the list
-# of genuine name
-for (i in genuine$Name) {
-  error$stringdist_i <- stringdist(error$Name, i)
-}
-
 # compute the distance matrix between each distinct pair of names in the
 # stringdist metric
-resultflmatrix <- stringdistmatrix(error$Name, genuine$Name, method = "dl")
+resultflmatrix <- stringdistmatrix(error$Name, genuine$Name, method = 'dl')
 resultdf <- data.frame(resultflmatrix)
 resultdf$error_name <- error$Name
 
+# It's likely that mispelled names have distant ={1,2} to correct ones
+resultdf <- resultdf %>% mutate(corrected = case_when(
+  stringdist("Barbara", error_name, method='dl')<3 ~ "Barbara",
+  stringdist("David", error_name, method='dl')<3 ~ "David",
+  stringdist("Elizabeth", error_name, method='dl')<3 ~ "Elizabeth",
+  stringdist("James", error_name, method='dl')<3 ~ "James",
+  stringdist("Jennifer", error_name, method='dl')<3 ~ "Jennifer",
+  stringdist("Jessica", error_name, method='dl')<3 ~ "Jessica",
+  stringdist("John", error_name, method='dl')<3 & str_detect(error_name,"h") ~ "John",
+  stringdist("Jon", error_name, method='dl') <3 ~ "Jon",
+  stringdist("Joseph", error_name, method='dl')<3 ~ "Joseph",
+  stringdist("Linda", error_name, method='dl')<3 ~ "Linda",
+  stringdist("Marie", error_name, method='dl')<3 ~ "Marie",
+  stringdist("Mary", error_name, method='dl')<3 ~ "Mary",
+  stringdist("Michael", error_name, method='dl')<3 ~ "Michael",
+  stringdist("Patricia", error_name, method='dl')<3 ~ "Patricia",
+  stringdist("Richard", error_name, method='dl')<3 ~ "Richard",
+  stringdist("Robert", error_name, method='dl')<3 ~ "Robert",
+  stringdist("Susan", error_name, method='dl')<3 ~ "Susan",
+  stringdist("William", error_name, method='dl')<3 ~ "William",
+))
+
+# check if any mispelled names left uncorrected
+resultdf %>%
+  summarise_all(~sum(is.na(.)))
+```
+
+```
+##   X1 X2 X3 X4 X5 X6 X7 X8 X9 X10 X11 X12 X13 X14 X15 X16 X17 X18 error_name
+## 1  0  0  0  0  0  0  0  0  0   0   0   0   0   0   0   0   0   0          0
+##   corrected
+## 1         0
+```
+
+
+2) For each of the genuine names identified in (1), produce a histogram showing
+the distribution of Damerau–Levenshtein distances from the genuine name to the
+misclassified data. Make sure distances from genuine names to other genuine
+names are not included in these distributions.
+Arrange all of the histograms into one figure write a short interpretation of it
+intended for a non-statistician client.
+
+```
+Below we see plots of the names that were corrected. For each incorrect name, we
+can measure the "distance" to the correct name by counting the number of
+incorrect letters. We found that this distance was at most two incorrect letters
+in this data set. For each genuine name, we count the number of incorrect names
+that were distance either one or two correct letters.
+```
+
+
+```r
+resultdf <- resultdf %>%
+    mutate(distance_to_correct = stringdist(error_name, corrected))
+
+ggplot(
+    data = resultdf,
+    aes(
+        x = distance_to_correct,
+        group = corrected
+        )
+    ) +
+    xlab("Distance") +
+    ylab("Count") +
+    geom_histogram(bins = 2) +
+    ggtitle("Distance from incorrect name to correct name") +
+    facet_wrap(~corrected)
+```
+
+![plot of chunk unnamed-chunk-4](figure/unnamed-chunk-4-1.png)
+
+
+3) Write code that reclassifies names similar to problem (1), but fully
+automated. You should end up with a function that takes the original data set
+and returns a cleaned version. Compare this cleaned data frame to the one
+from problem (1) and quantify the accuracy (i.e. what proportion of rows
+match?). Make sure your automated process achieves 90%, but shoot for higher
+if possible!
+
+
+```r
 # search for a closest neighbor in this metric for each name
 resultdf[c("min")] <- apply(
     resultdf[c(1:18)], 1, function(x) c(min(x))
@@ -610,18 +685,3 @@ resultdf[c("error_name", "corrected")]
 ## 231        ohn      John
 ```
 
-
-2) For each of the genuine names identified in (1), produce a histogram showing
-the distribution of Damerau–Levenshtein distances from the genuine name to the
-miscassified data. Make sure distances from genuine names to other genuine names
-are not included in these distributions.
-Arrange all of the histograms into one figure write a short interpretation of it
-intended for a non-statistician client.
-
-
-3) Write code that reclassifies names similar to problem (1), but fully
-automated. You should end up with a function that takes the original data set
-and returns a cleaned version. Compare this cleaned data frame to the one
-from problem (1) and quantify the accuracy (i.e. what proportion of rows
-match?). Make sure your automated process achieves 90%, but shoot for higher
-if possible!
