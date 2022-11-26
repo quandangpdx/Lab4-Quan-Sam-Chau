@@ -309,7 +309,119 @@ from problem (1) and quantify the accuracy (i.e. what proportion of rows
 match?). Make sure your automated process achieves 90%, but shoot for higher
 if possible!
 
+```{r manual, echo=F}
+# tally the unique names and create a new data set ordered by frequency
+unique_names = humans_names %>%
+  select(Name) %>%
+  count(Name) %>%
+  arrange(n)
+
+# observe that names appearing n<=5 are likely to be errors
+unique_names$genuine[unique_names$n > 5] <- 1
+unique_names$genuine[unique_names$n <= 5] <- 0
+
+# partition the data set into (likely) genuine and error names
+genuine <- unique_names[unique_names$genuine == 1, ]
+error <- unique_names[unique_names$genuine == 0, ]
+
+# compute the distance matrix between each distinct pair of names in the
+# stringdist metric
+resultflmatrix <- stringdistmatrix(error$Name, genuine$Name, method = 'dl')
+m_resultdf <- data.frame(resultflmatrix)
+m_resultdf$error_name <- error$Name
+
+# It's likely that mispelled names have distant ={1,2} to correct ones
+m_resultdf <- m_resultdf %>% mutate(corrected = case_when(
+  stringdist("Barbara", error_name, method='dl')<3 ~ "Barbara",
+  stringdist("David", error_name, method='dl')<3 ~ "David",
+  stringdist("Elizabeth", error_name, method='dl')<3 ~ "Elizabeth",
+  stringdist("James", error_name, method='dl')<3 ~ "James",
+  stringdist("Jennifer", error_name, method='dl')<3 ~ "Jennifer",
+  stringdist("Jessica", error_name, method='dl')<3 ~ "Jessica",
+  stringdist("John", error_name, method='dl')<3 & str_detect(error_name,"h") ~ "John",
+  stringdist("Jon", error_name, method='dl') <3 ~ "Jon",
+  stringdist("Joseph", error_name, method='dl')<3 ~ "Joseph",
+  stringdist("Linda", error_name, method='dl')<3 ~ "Linda",
+  stringdist("Marie", error_name, method='dl')<3 ~ "Marie",
+  stringdist("Mary", error_name, method='dl')<3 ~ "Mary",
+  stringdist("Michael", error_name, method='dl')<3 ~ "Michael",
+  stringdist("Patricia", error_name, method='dl')<3 ~ "Patricia",
+  stringdist("Richard", error_name, method='dl')<3 ~ "Richard",
+  stringdist("Robert", error_name, method='dl')<3 ~ "Robert",
+  stringdist("Susan", error_name, method='dl')<3 ~ "Susan",
+  stringdist("William", error_name, method='dl')<3 ~ "William",
+))
+```
+
+
 ```{r}
+cleanname <-function(df) {
+  
+  # count the appearance of each unique names
+  unique_names = df %>%
+  select(Name) %>%
+  count(Name) %>%
+  arrange(n)
+ 
+  # observe that names appearing n<=5 are likely to be errors
+  unique_names$genuine[unique_names$n > 5] <- 1
+  unique_names$genuine[unique_names$n <= 5] <- 0
+  
+  # partition the data set into (likely) genuine and error names
+  genuine <- unique_names[unique_names$genuine == 1, ]
+  error <- unique_names[unique_names$genuine == 0, ]
+  
+  # compute the distance matrix between each distinct pair of names in the stringdist metric
+  resultflmatrix <- stringdistmatrix(error$Name, genuine$Name, method = 'dl')
+  resultdf <- data.frame(resultflmatrix)
+  n_genuine <- ncol(resultdf)
+  resultdf$error_name <- error$Name 
+  
+  # search for a closest neighbor in this metric for each name
+  resultdf[c("min")] <- apply(
+      resultdf[c(1:n_genuine)], 1, function(x) c(min(x))
+      )
+  resultdf[c("min_index")] <- apply(
+      resultdf[c(1:n_genuine)], 1, function(x) c(which.min(x))
+      )
+  
+  # get the correct name by index and plug in cleaning result dataframe
+  resultdf$corrected <- genuine$Name[resultdf$min_index]
+  
+  # merge the cleaning result with the original dataset and return
+  resultdf <- resultdf %>% select(error_name, corrected)
+  humans_names_cleaned <- humans_names %>% left_join(resultdf, by = c("Name" = "error_name"))
+  humans_names_cleaned <- humans_names_cleaned %>%  
+    mutate(corrected = coalesce(corrected,Name))
+  return(list(sum(resultdf$corrected==m_resultdf$corrected), humans_names_cleaned))
+}
+
+humans_names_cleaned <- cleanname(humans_names)[[2]]
+head(humans_names_cleaned)
+print(cleanname(humans_names)[[1]]/231) # match 97% with the manual method.
+```
+
+
+```{r, include=F}
+{
+unique_names = humans_names %>%
+  select(Name) %>%
+  count(Name) %>%
+  arrange(n)
+
+# observe that names appearing n<=5 are likely to be errors
+unique_names$genuine[unique_names$n > 5] <- 1
+unique_names$genuine[unique_names$n <= 5] <- 0
+
+# partition the data set into (likely) genuine and error names
+genuine <- unique_names[unique_names$genuine == 1, ]
+error <- unique_names[unique_names$genuine == 0, ]
+
+# compute the distance matrix between each distinct pair of names in the
+# stringdist metric
+resultflmatrix <- stringdistmatrix(error$Name, genuine$Name, method = 'dl')
+resultdf <- data.frame(resultflmatrix)
+resultdf$error_name <- error$Name
 
 # search for a closest neighbor in this metric for each name
 resultdf[c("min")] <- apply(
@@ -321,9 +433,10 @@ resultdf[c("min_index")] <- apply(
 
 # overwrite likely error names with their closest neighbor
 resultdf$corrected <- genuine$Name[resultdf$min_index]
-
+}
 # the list of corrected names is relatively short; manually check that the
 # corrected names are reasonable
 resultdf[c("error_name", "corrected")]
+
 ```
 
